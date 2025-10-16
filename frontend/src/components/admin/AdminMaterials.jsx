@@ -27,7 +27,7 @@ const AdminMaterials = () => {
   const loadItems = async () => {
     try {
       setLoading(true);
-      const data = await get('/admin/materials');
+      const data = await get('/admin/materials', authHeader);
       setItems(data);
     } catch (error) {
       console.error('Failed to load materials:', error);

@@ -26,7 +26,7 @@ const AdminExams = () => {
   const loadItems = async () => {
     try {
       setLoading(true);
-      const data = await get('/admin/exams');
+      const data = await get('/admin/exams', authHeader);
       setItems(data);
     } catch (error) {
       console.error('Failed to load exams:', error);

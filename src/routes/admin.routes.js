@@ -13,6 +13,11 @@ router.post('/upload/curricula', curriculaCtrl.create);
 router.post('/upload/exam', examsCtrl.create);
 router.post('/upload/material', materialsCtrl.create);
 
+// Resource-style create endpoints expected by the frontend
+router.post('/curricula', curriculaCtrl.create);
+router.post('/exams', examsCtrl.create);
+router.post('/materials', materialsCtrl.create);
+
 router.get('/curricula', curriculaCtrl.list);
 router.get('/curricula/:id', curriculaCtrl.get);
 router.put('/curricula/:id', curriculaCtrl.update);

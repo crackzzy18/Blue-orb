@@ -26,7 +26,7 @@ const AdminCurricula = () => {
   const loadItems = async () => {
     try {
       setLoading(true);
-      const data = await get('/admin/curricula');
+      const data = await get('/admin/curricula', authHeader);
       setItems(data);
     } catch (error) {
       console.error('Failed to load curricula:', error);
