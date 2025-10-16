@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "home": "Kër",
+    "curricula": "Janq",
+    "exams": "Eksamam",
+    "materials": "Jàngale",
+    "community": "Mbooloo",
+    "admin": "Boroom"
+  },
+  "hero": {
+    "title": "Yobbu Jàngalkat yi Afrik",
+    "subtitle": "Ci jàngale bu ubbi",
+    "explore": "Xool Janq yi",
+    "exams": "Jël Eksamam",
+    "materials": "Jàngale",
+    "community": "Bokk ci Mbooloo"
+  },
+  "curricula": {
+    "title": "Janq yu Jàngale",
+    "description": "Xool yoon yi ci jàng",
+    "loading": "Dafay yeexal janq yi...",
+    "empty": "Amul janq"
+  },
+  "exams": {
+    "title": "Laaj yu Weesu ak Eksamam",
+    "description": "Jël jumtukaay yu eksamam",
+    "download": "Yeb",
+    "year": "At",
+    "loading": "Dafay yeexal eksamam...",
+    "empty": "Amul eksam"
+  },
+  "materials": {
+    "title": "Jàngale",
+    "description": "Jumtukaay yu jàngale yu ubbi",
+    "author": "Bind",
+    "category": "Wàll",
+    "view": "Xool",
+    "loading": "Dafay yeexal jàngale...",
+    "empty": "Amul jàngale"
+  },
+  "community": {
+    "title": "Mbooloo",
+    "description": "Laaj ak joxe xam-xam",
+    "askQuestion": "Laaj ab Laaj",
+    "yourQuestion": "Sa laaj...",
+    "yourName": "Sa tur",
+    "submit": "Yónnee",
+    "replies": "tontu",
+    "loading": "Dafay yeexal ngir...",
+    "empty": "Amul laaj. Yaw daal!"
+  },
+  "admin": {
+    "title": "Boroom Dashboard",
+    "login": "Dugal Boroom",
+    "username": "Tur",
+    "password": "Batal",
+    "loginButton": "Dugal",
+    "logout": "Génn",
+    "stats": "Njëkk",
+    "add": "Yokk",
+    "edit": "Soppi",
+    "delete": "Dindi",
+    "save": "Marqal",
+    "cancel": "Neenal",
+    "confirm": "Ndax nga xam?",
+    "curricula": "Tëral Janq",
+    "exams": "Tëral Eksamam",
+    "materials": "Tëral Jàngale"
+  },
+  "form": {
+    "title": "Tur",
+    "description": "Feeñal",
+    "thumbnailCID": "Thumbnail CID",
+    "fileCID": "File CID",
+    "subject": "Xët",
+    "year": "At",
+    "author": "Bind",
+    "category": "Wàll",
+    "required": "Dafa soxla"
+  },
+  "footer": {
+    "tagline": "Jàngale bu ubbi ngir ñepp",
+    "rights": "Yëp ci saw"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "nav": {
+    "home": "Home",
+    "curricula": "Curricula",
+    "exams": "Exams",
+    "materials": "Materials",
+    "community": "Community",
+    "admin": "Admin"
+  },
+  "hero": {
+    "title": "Empowering African Learners",
+    "subtitle": "Through open digital education",
+    "explore": "Explore Curricula",
+    "exams": "Access Exams",
+    "materials": "Learning Materials",
+    "community": "Join Community"
+  },
+  "curricula": {
+    "title": "Educational Curricula",
+    "description": "Browse comprehensive learning paths",
+    "loading": "Loading curricula...",
+    "empty": "No curricula available yet"
+  },
+  "exams": {
+    "title": "Past Questions & Exams",
+    "description": "Access examination resources",
+    "download": "Download",
+    "year": "Year",
+    "loading": "Loading exams...",
+    "empty": "No exams available yet"
+  },
+  "materials": {
+    "title": "Learning Materials",
+    "description": "Open educational resources",
+    "author": "Author",
+    "category": "Category",
+    "view": "View",
+    "loading": "Loading materials...",
+    "empty": "No materials available yet"
+  },
+  "community": {
+    "title": "Community Forum",
+    "description": "Ask questions and share knowledge",
+    "askQuestion": "Ask a Question",
+    "yourQuestion": "Your question...",
+    "yourName": "Your name",
+    "submit": "Submit",
+    "replies": "replies",
+    "loading": "Loading discussions...",
+    "empty": "No questions yet. Be the first to ask!"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "login": "Admin Login",
+    "username": "Username",
+    "password": "Password",
+    "loginButton": "Login",
+    "logout": "Logout",
+    "stats": "Statistics",
+    "add": "Add New",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Are you sure?",
+    "curricula": "Manage Curricula",
+    "exams": "Manage Exams",
+    "materials": "Manage Materials"
+  },
+  "form": {
+    "title": "Title",
+    "description": "Description",
+    "thumbnailCID": "Thumbnail CID",
+    "fileCID": "File CID",
+    "subject": "Subject",
+    "year": "Year",
+    "author": "Author",
+    "category": "Category",
+    "required": "This field is required"
+  },
+  "footer": {
+    "tagline": "Open education for all",
+    "rights": "All rights reserved"
+  }
+}
