@@ -6,6 +6,8 @@ import Curricula from './pages/Curricula';
 import Exams from './pages/Exams';
 import Materials from './pages/Materials';
 import Community from './pages/Community';
+import MyQuestions from './pages/MyQuestions';
+import MyReplies from './pages/MyReplies';
 import Admin from './pages/Admin';
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
             <Route path="/exams" element={<Exams />} />
             <Route path="/materials" element={<Materials />} />
             <Route path="/community" element={<Community />} />
+            <Route path="/community/my-questions" element={<MyQuestions />} />
+            <Route path="/community/my-replies" element={<MyReplies />} />
             <Route path="/admin" element={<Admin />} />
           </Routes>
         </main>

@@ -60,6 +60,22 @@ const Navbar = () => {
               {t('nav.community')}
             </Link>
             <Link
+              to="/community/my-questions"
+              className={`font-medium transition-colors ${
+                isActive('/community/my-questions') ? 'text-primary' : 'text-gray-600 hover:text-primary'
+              }`}
+            >
+              My Questions
+            </Link>
+            <Link
+              to="/community/my-replies"
+              className={`font-medium transition-colors ${
+                isActive('/community/my-replies') ? 'text-primary' : 'text-gray-600 hover:text-primary'
+              }`}
+            >
+              My Replies
+            </Link>
+            <Link
               to="/admin"
               className={`font-medium transition-colors ${
                 isActive('/admin') ? 'text-primary' : 'text-gray-600 hover:text-primary'
@@ -76,6 +92,18 @@ const Navbar = () => {
             <span className="text-lg">🌐</span>
             <span className="font-medium">{lang.toUpperCase()}</span>
           </button>
+        </div>
+      </div>
+      <div className="md:hidden border-t">
+        <div className="container mx-auto px-4 py-3 flex flex-wrap gap-4">
+          <Link to="/" className={`text-sm ${isActive('/')?'text-primary':'text-gray-700'}`}>{t('nav.home')}</Link>
+          <Link to="/curricula" className={`text-sm ${isActive('/curricula')?'text-primary':'text-gray-700'}`}>{t('nav.curricula')}</Link>
+          <Link to="/exams" className={`text-sm ${isActive('/exams')?'text-primary':'text-gray-700'}`}>{t('nav.exams')}</Link>
+          <Link to="/materials" className={`text-sm ${isActive('/materials')?'text-primary':'text-gray-700'}`}>{t('nav.materials')}</Link>
+          <Link to="/community" className={`text-sm ${isActive('/community')?'text-primary':'text-gray-700'}`}>{t('nav.community')}</Link>
+          <Link to="/community/my-questions" className={`text-sm ${isActive('/community/my-questions')?'text-primary':'text-gray-700'}`}>My Questions</Link>
+          <Link to="/community/my-replies" className={`text-sm ${isActive('/community/my-replies')?'text-primary':'text-gray-700'}`}>My Replies</Link>
+          <Link to="/admin" className={`text-sm ${isActive('/admin')?'text-primary':'text-gray-700'}`}>{t('nav.admin')}</Link>
         </div>
       </div>
     </nav>

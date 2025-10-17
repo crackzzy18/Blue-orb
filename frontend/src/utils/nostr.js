@@ -15,12 +15,23 @@ export async function generateKeypair() {
 export function saveKeysSecurely({ nsec, npub, role = 'student', username = '', bio = '' }) {
   const profile = { npub, role, username, bio };
   sessionStorage.setItem('nostr_profile', JSON.stringify(profile));
+  try { localStorage.setItem('nostr_profile', JSON.stringify(profile)); } catch(_){}
   sessionStorage.setItem('nostr_nsec', nsec);
+  try { localStorage.setItem('nostr_nsec', nsec); } catch(_){}
+  try {
+    const key = 'nostr_roles';
+    const map = JSON.parse(localStorage.getItem(key) || '{}');
+    if (!map[npub]) {
+      map[npub] = role;
+      localStorage.setItem(key, JSON.stringify(map));
+    }
+  } catch(_) {}
 }
 
 export function loadProfile() {
   try {
-    const raw = sessionStorage.getItem('nostr_profile');
+    const rawLocal = localStorage.getItem('nostr_profile');
+    const raw = rawLocal || sessionStorage.getItem('nostr_profile');
     if (!raw) return null;
     return JSON.parse(raw);
   } catch(_) { return null; }
@@ -30,17 +41,22 @@ export function updateProfile(partial) {
   const current = loadProfile() || {};
   const next = { ...current, ...partial };
   sessionStorage.setItem('nostr_profile', JSON.stringify(next));
+  try { localStorage.setItem('nostr_profile', JSON.stringify(next)); } catch(_){ }
   return next;
 }
 
 export function loadSecret() {
-  return sessionStorage.getItem('nostr_nsec');
+  return localStorage.getItem('nostr_nsec') || sessionStorage.getItem('nostr_nsec');
 }
 
 export function clearKeys() {
   sessionStorage.removeItem('nostr_profile');
   sessionStorage.removeItem('nostr_nsec');
   sessionStorage.removeItem('nostr_unread_since');
+  try {
+    localStorage.removeItem('nostr_profile');
+    localStorage.removeItem('nostr_nsec');
+  } catch(_) {}
 }
 
 export function maskNsec(nsec) {
@@ -85,4 +101,20 @@ export async function derivePublicKey(nsec) {
     console.error('Failed to derive public key:', error);
     return null;
   }
+}
+
+export function getStoredRoleForPubkey(npub){
+  try {
+    const map = JSON.parse(localStorage.getItem('nostr_roles') || '{}');
+    return map[npub] || '';
+  } catch(_) { return ''; }
+}
+
+export function setStoredRoleForPubkey(npub, role){
+  try {
+    const key = 'nostr_roles';
+    const map = JSON.parse(localStorage.getItem(key) || '{}');
+    map[npub] = role;
+    localStorage.setItem(key, JSON.stringify(map));
+  } catch(_) {}
 }

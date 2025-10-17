@@ -6,6 +6,8 @@ router.post('/questions', ctrl.postQuestion);
 router.get('/questions', ctrl.listQuestions);
 router.post('/replies', ctrl.postReply);
 router.get('/replies', ctrl.listReplies);
+router.get('/replies-by-author', ctrl.listRepliesByAuthor);
+router.post('/delete', ctrl.deleteEvent);
 
 // Optional: key generation helper
 router.get('/keys', ctrl.generateKeys);
