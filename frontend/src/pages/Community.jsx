@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useTranslation } from '../utils/i18n';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { generateKeypair, saveKeysSecurely, loadProfile, loadSecret, clearKeys, maskNsec, SUBJECT_OPTIONS, GRADE_OPTIONS, updateProfile, getUnreadSince, setUnreadSince, derivePublicKey } from '../utils/nostr';
+import { generateKeypair, saveKeysSecurely, loadProfile, loadSecret, clearKeys, maskNsec, SUBJECT_OPTIONS, GRADE_OPTIONS, updateProfile, getUnreadSince, setUnreadSince, derivePublicKey, normalizePrivateKey } from '../utils/nostr';
 
 const POLL_INTERVAL_MS = 8000;
 
@@ -28,8 +28,9 @@ const Community = () => {
   const { get, post } = useApi();
   const { t } = useTranslation();
 
-  // Only load feed when both filters are set or both are empty
+  // Only load feed when both filters are set (teacher) or always for students
   const shouldLoadFeed = () => {
+    if (profile?.role === 'student') return true;
     return (subjectFilter && gradeFilter) || (!subjectFilter && !gradeFilter);
   };
 
@@ -68,9 +69,7 @@ const Community = () => {
   }, [subjectFilter, gradeFilter]);
 
   const markAllRead = () => {
-    const latest = (questions || []).reduce((max, ev) => Math.max(max, (ev.created_at||0)), 0);
-    lastSeenTsRef.current = latest || Math.floor(Date.now()/1000);
-    setUnreadSince(lastSeenTsRef.current);
+    // Notification feature disabled
     setHasUnread(false);
   };
 
@@ -129,12 +128,13 @@ const Community = () => {
   const handleLogin = async () => {
     if (!loginSecret || loginSecret.length < 10) return;
     try {
-      const npub = await derivePublicKey(loginSecret);
+      const normalized = await normalizePrivateKey(loginSecret);
+      const npub = await derivePublicKey(normalized);
       if (!npub) {
         alert('Invalid private key. Please check and try again.');
         return;
       }
-      sessionStorage.setItem('nostr_nsec', loginSecret);
+      sessionStorage.setItem('nostr_nsec', normalized);
       const existingProfile = loadProfile();
       if (existingProfile) {
         // Update existing profile with derived npub
@@ -171,11 +171,12 @@ const Community = () => {
       alert('Please select both subject and grade.');
       return;
     }
-    const nsec = loadSecret();
+    let nsec = loadSecret();
     if (!nsec) { 
       setAuthMode('login'); 
       return; 
     }
+    nsec = await normalizePrivateKey(nsec);
     try {
       setSubmitting(true);
       await post('/community/questions', { 
@@ -355,16 +356,7 @@ const Community = () => {
               </svg>
             </button>
           </div>
-          <div className="relative">
-            <button onClick={markAllRead} className="p-2 text-gray-600 hover:text-gray-900">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5v-5a7.5 7.5 0 0115 0v5z" />
-              </svg>
-            </button>
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 inline-block w-3 h-3 bg-red-500 rounded-full" />
-            )}
-          </div>
+          {/* Notification button removed */}
           <span className="text-sm text-gray-600 hidden md:inline">{profile.role?.toUpperCase()} · {profile.npub ? profile.npub.slice(0,10)+'…' : 'npub not set'}</span>
         </div>
       </div>
@@ -372,7 +364,7 @@ const Community = () => {
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full">
+          <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900">Settings</h3>
               <button onClick={()=>setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
@@ -392,15 +384,15 @@ const Community = () => {
               </div>
               <div>
                 <label className="block text-gray-700 font-medium mb-2">Public Key (npub)</label>
-                <div className="flex items-center space-x-2">
-                  <input value={profile.npub || 'n/a'} readOnly className="input-field flex-1" />
+                <div className="flex items-center space-x-2 overflow-x-auto">
+                  <input value={profile.npub || 'n/a'} readOnly className="input-field flex-1 text-sm" />
                   <button onClick={()=>copyToClipboard(profile.npub || '')} className="btn-secondary">Copy</button>
                 </div>
               </div>
               <div>
                 <label className="block text-gray-700 font-medium mb-2">Private Key (nsec) - Keep Secret!</label>
-                <div className="flex items-center space-x-2">
-                  <input value={maskNsec(loadSecret()) || 'n/a'} readOnly className="input-field flex-1" />
+                <div className="flex items-center space-x-2 overflow-x-auto">
+                  <input value={maskNsec(loadSecret()) || 'n/a'} readOnly className="input-field flex-1 text-sm" />
                   <button onClick={()=>copyToClipboard(loadSecret() || '')} className="btn-secondary">Copy</button>
                 </div>
               </div>
@@ -409,7 +401,6 @@ const Community = () => {
                 <button onClick={()=>setShowSettings(false)} className="btn-secondary flex-1">Cancel</button>
               </div>
               <div className="pt-4 border-t">
-                <button onClick={()=>setAuthMode('login')} className="btn-secondary w-full mb-2">Switch Account</button>
                 <button onClick={handleLogout} className="btn-secondary w-full">Logout</button>
               </div>
             </div>
@@ -417,23 +408,25 @@ const Community = () => {
         </div>
       )}
 
-      <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select value={subjectFilter} onChange={e=>setSubjectFilter(e.target.value)} className="input-field">
-            <option value="">All subjects</option>
-            {SUBJECT_OPTIONS.map(s=> <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select value={gradeFilter} onChange={e=>setGradeFilter(e.target.value)} className="input-field">
-            <option value="">All grades</option>
-            {GRADE_OPTIONS.map(g=> <option key={g} value={g}>{g}</option>)}
-          </select>
-        </div>
-        {!shouldLoadFeed() && (
-          <div className="mt-2 text-sm text-gray-600">
-            Please select both subject and grade filters to load content.
+      {profile.role === 'teacher' && (
+        <div className="card mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <select value={subjectFilter} onChange={e=>setSubjectFilter(e.target.value)} className="input-field">
+              <option value="">All subjects</option>
+              {SUBJECT_OPTIONS.map(s=> <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={gradeFilter} onChange={e=>setGradeFilter(e.target.value)} className="input-field">
+              <option value="">All grades</option>
+              {GRADE_OPTIONS.map(g=> <option key={g} value={g}>{g}</option>)}
+            </select>
           </div>
-        )}
-      </div>
+          {!shouldLoadFeed() && (
+            <div className="mt-2 text-sm text-gray-600">
+              Please select both subject and grade filters to load content.
+            </div>
+          )}
+        </div>
+      )}
 
       {profile.role === 'student' && (
         <div className="card mb-8">
