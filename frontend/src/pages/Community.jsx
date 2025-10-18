@@ -11,14 +11,14 @@ const Community = () => {
   const [repliesByParent, setRepliesByParent] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [subjectFilter, setSubjectFilter] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('');
-  const [viewTab, setViewTab] = useState('feed'); // 'feed' | 'mine' | 'replies'
+  const [viewTab, setViewTab] = useState(() => {
+    const profile = loadProfile();
+    return profile?.role === 'teacher' ? 'replies' : 'mine';
+  }); // 'mine' | 'replies'
   const [roleTab, setRoleTab] = useState('student');
   const [authMode, setAuthMode] = useState('');
   const [loginSecret, setLoginSecret] = useState('');
   const [profile, setProfile] = useState(loadProfile());
-  const [askForm, setAskForm] = useState({ content: '', subject: '', grade: '', allow: 'both' });
   const [replyDrafts, setReplyDrafts] = useState({});
   const [hasUnread, setHasUnread] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -29,75 +29,115 @@ const Community = () => {
   const { get, post } = useApi();
   const { t } = useTranslation();
 
-  // Only load feed when both filters are set (teacher) or always for students
+  // Check if we should load feed based on role and filters
   const shouldLoadFeed = () => {
-    if (profile?.role === 'student') return true;
-    return (subjectFilter && gradeFilter) || (!subjectFilter && !gradeFilter);
+    if (profile?.role === 'student' && viewTab === 'mine') return true;
+    if (profile?.role === 'teacher' && viewTab === 'replies') return true;
+    return false;
   };
 
+  // Check if we should poll in background (same logic but for background updates)
+  const shouldPoll = () => {
+    if (profile?.role === 'student' && viewTab === 'mine') return true;
+    if (profile?.role === 'teacher' && viewTab === 'replies') return true;
+    return false;
+  };
+
+  // Initial load effect - only runs when view changes or on mount
   useEffect(() => {
     if (shouldLoadFeed()) {
       loadFeed();
     }
-  }, [subjectFilter, gradeFilter, viewTab, profile?.npub]);
+  }, [viewTab, profile?.npub]);
 
+  // Background polling effect - runs every 5 seconds without loading states
   useEffect(() => {
-    const id = setInterval(async () => {
-      if (!shouldLoadFeed()) return;
-      try {
-        const params = new URLSearchParams();
-        if (viewTab === 'mine' && profile?.npub) params.set('author', profile.npub);
-        if (subjectFilter) params.set('subject', subjectFilter);
-        if (gradeFilter) params.set('grade', gradeFilter);
-        const q = await get(`/community/questions${params.toString() ? `?${params.toString()}` : ''}`);
-        // Sort by most recent first
-        const sorted = (q || []).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-        setQuestions(sorted);
-        const repliesEntries = await Promise.all(
-          (sorted || []).map(async (ev) => {
-            const res = await get(`/community/replies?parentId=${ev.id}`);
-            return [ev.id, res];
-          })
-        );
-        const map = Object.fromEntries(repliesEntries);
-        setRepliesByParent(map);
-        const latest = sorted.reduce((max, ev) => Math.max(max, (ev.created_at||0)), 0);
-        if (latest && latest > (lastSeenTsRef.current || 0)) {
-          setHasUnread(true);
-        }
-      } catch (_) {}
-    }, POLL_INTERVAL_MS);
+    if (!shouldPoll()) return;
+    
+    const id = setInterval(() => {
+      updateFeedInBackground();
+    }, 5000); // 5 second intervals for background polling
+    
     return () => clearInterval(id);
-  }, [subjectFilter, gradeFilter]);
+  }, [viewTab, profile?.npub]);
 
   const markAllRead = () => {
     // Notification feature disabled
     setHasUnread(false);
   };
 
-  const loadFeed = async () => {
+  const loadFeed = async (showLoading = true) => {
     try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (viewTab === 'mine' && profile?.npub) params.set('author', profile.npub);
-      if (subjectFilter) params.set('subject', subjectFilter);
-      if (gradeFilter) params.set('grade', gradeFilter);
-      const q = await get(`/community/questions${params.toString() ? `?${params.toString()}` : ''}`);
-      // Sort by most recent first
-      const sorted = (q || []).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-      setQuestions(sorted);
-      const repliesEntries = await Promise.all(
-        (sorted || []).map(async (ev) => {
-          const res = await get(`/community/replies?parentId=${ev.id}`);
-          return [ev.id, res];
-        })
-      );
-      const map = Object.fromEntries(repliesEntries);
-      setRepliesByParent(map);
+      if (showLoading) setLoading(true);
+      
+      if (profile?.role === 'teacher' && viewTab === 'replies') {
+        // Load teacher's replies
+        if (profile?.npub) {
+          const replies = await get(`/community/replies-by-author?author=${profile.npub}`);
+          setQuestions(replies || []);
+          setRepliesByParent({});
+        }
+      } else if (profile?.role === 'student' && viewTab === 'mine') {
+        // Load student's own questions
+        if (profile?.npub) {
+          const params = new URLSearchParams();
+          params.set('author', profile.npub);
+          const q = await get(`/community/questions?${params.toString()}`);
+          // Sort by most recent first
+          const sorted = (q || []).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+          setQuestions(sorted);
+          const repliesEntries = await Promise.all(
+            (sorted || []).map(async (ev) => {
+              const res = await get(`/community/replies?parentId=${ev.id}`);
+              return [ev.id, res];
+            })
+          );
+          const map = Object.fromEntries(repliesEntries);
+          setRepliesByParent(map);
+        }
+      }
     } catch (error) {
       console.error('Failed to load community data:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  // Background update function - no loading states
+  const updateFeedInBackground = async () => {
+    try {
+      if (profile?.role === 'teacher' && viewTab === 'replies') {
+        // Update teacher's replies
+        if (profile?.npub) {
+          const replies = await get(`/community/replies-by-author?author=${profile.npub}`);
+          setQuestions(replies || []);
+          setRepliesByParent({});
+        }
+      } else if (profile?.role === 'student' && viewTab === 'mine') {
+        // Update student's own questions
+        if (profile?.npub) {
+          const params = new URLSearchParams();
+          params.set('author', profile.npub);
+          const q = await get(`/community/questions?${params.toString()}`);
+          // Sort by most recent first
+          const sorted = (q || []).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+          setQuestions(sorted);
+          const repliesEntries = await Promise.all(
+            (sorted || []).map(async (ev) => {
+              const res = await get(`/community/replies?parentId=${ev.id}`);
+              return [ev.id, res];
+            })
+          );
+          const map = Object.fromEntries(repliesEntries);
+          setRepliesByParent(map);
+          const latest = sorted.reduce((max, ev) => Math.max(max, (ev.created_at||0)), 0);
+          if (latest && latest > (lastSeenTsRef.current || 0)) {
+            setHasUnread(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Background update error:', error);
     }
   };
 
@@ -173,42 +213,6 @@ const Community = () => {
     setShowSettings(false);
   };
 
-  const handleAsk = async (e) => {
-    e.preventDefault();
-    if (!askForm.content.trim()) {
-      alert('Please enter your question.');
-      return;
-    }
-    if (!askForm.subject || !askForm.grade) {
-      alert('Please select both subject and grade.');
-      return;
-    }
-    let nsec = loadSecret();
-    if (!nsec) { 
-      setAuthMode('login'); 
-      return; 
-    }
-    nsec = await normalizePrivateKey(nsec);
-    try {
-      setSubmitting(true);
-      await post('/community/questions', { 
-        nsec, 
-        content: askForm.content, 
-        subject: askForm.subject, 
-        grade: askForm.grade,
-        role: profile.role || 'student',
-        allow: askForm.allow
-      });
-      setAskForm({ content: '', subject: '', grade: '', allow: 'both' });
-      await loadFeed();
-      alert('Question submitted successfully!');
-    } catch (error) {
-      console.error('Failed to submit question:', error);
-      alert('Failed to submit question. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleReply = async (parentId) => {
     const content = replyDrafts[parentId];
@@ -436,7 +440,6 @@ const Community = () => {
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-6">
-        <button onClick={()=>setViewTab('feed')} className={`px-4 py-2 rounded ${viewTab==='feed'?'bg-blue-600 text-white':'bg-gray-100'}`}>Questions Feed</button>
         {profile.role==='student' && (
           <button onClick={()=>setViewTab('mine')} className={`px-4 py-2 rounded ${viewTab==='mine'?'bg-blue-600 text-white':'bg-gray-100'}`}>My Questions</button>
         )}
@@ -492,62 +495,12 @@ const Community = () => {
         </div>
       )}
 
-      {(profile.role === 'teacher' || (profile.role==='student' && viewTab==='feed')) && (
-        <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select value={subjectFilter} onChange={e=>setSubjectFilter(e.target.value)} className="input-field">
-              <option value="">All subjects</option>
-              {SUBJECT_OPTIONS.map(s=> <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={gradeFilter} onChange={e=>setGradeFilter(e.target.value)} className="input-field">
-              <option value="">All grades</option>
-              {GRADE_OPTIONS.map(g=> <option key={g} value={g}>{g}</option>)}
-            </select>
-          </div>
-          {!shouldLoadFeed() && (
-            <div className="mt-2 text-sm text-gray-600">
-              Please select both subject and grade filters to load content.
-            </div>
-          )}
-        </div>
-      )}
 
-      {profile.role === 'student' && (
-        <div className="card mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Ask a Question</h2>
-          <form onSubmit={handleAsk}>
-            <div className="mb-4">
-              <textarea value={askForm.content} onChange={e=>setAskForm({...askForm, content:e.target.value})} className="input-field min-h-[120px] resize-y" placeholder="Your question" required />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <select value={askForm.subject} onChange={e=>setAskForm({...askForm, subject:e.target.value})} className="input-field" required>
-                <option value="">Select Subject *</option>
-                {SUBJECT_OPTIONS.map(s=> <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select value={askForm.grade} onChange={e=>setAskForm({...askForm, grade:e.target.value})} className="input-field" required>
-                <option value="">Select Grade *</option>
-                {GRADE_OPTIONS.map(g=> <option key={g} value={g}>{g}</option>)}
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Who can reply?</label>
-              <div className="grid grid-cols-3 gap-2">
-                {['both','teachers','students'].map(opt => (
-                  <button type="button" key={opt} onClick={()=>setAskForm({...askForm, allow: opt})} className={`px-3 py-2 rounded border ${askForm.allow===opt?'bg-blue-600 text-white':'bg-white'}`}>
-                    {opt==='both' ? 'Teachers & Students' : opt.charAt(0).toUpperCase()+opt.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-50">{submitting ? 'Submitting...' : 'Submit Question'}</button>
-          </form>
-        </div>
-      )}
 
       {profile.role === 'teacher' && (
         <div className="card mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Teacher Dashboard</h2>
-          <p className="text-gray-600 mb-4">Filter questions by subject and grade to help students with their questions.</p>
+          <p className="text-gray-600 mb-4">View and manage your replies to student questions.</p>
         </div>
       )}
 
@@ -569,7 +522,9 @@ const Community = () => {
         {questions.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600">
-              {!shouldLoadFeed() ? 'Please select both subject and grade filters to load content.' : 'No questions yet'}
+              {profile?.role === 'teacher' && viewTab === 'replies' ? 'You haven\'t posted any replies yet.' : 
+               profile?.role === 'student' && viewTab === 'mine' ? 'You haven\'t asked any questions yet.' :
+               'No questions yet'}
             </p>
           </div>
         ) : (
@@ -585,7 +540,10 @@ const Community = () => {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-gray-900">Question {edited ? <span className="ml-2 text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">edited</span> : null}</h3>
+                        <h3 className="font-bold text-gray-900">
+                          {profile?.role === 'teacher' && viewTab === 'replies' ? 'Reply' : 'Question'} 
+                          {edited ? <span className="ml-2 text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-800">edited</span> : null}
+                        </h3>
                         {/* Author controls (Edit/Delete) only if current user authored */}
                         {profile.npub && (question.tags||[]).some(t=>t[0]==='p' && t[1]===profile.npub) && (
                           <div className="flex items-center gap-2">
@@ -631,14 +589,25 @@ const Community = () => {
                       </div>
                     )}
 
-                    {(profile.role === 'teacher' || (profile.role==='student' && viewTab!=='mine')) && (
-                      <div className="mt-4">
-                        <textarea value={replyDrafts[question.id]||''} onChange={e=>setReplyDrafts({...replyDrafts, [question.id]: e.target.value})} className="input-field min-h-[80px]" placeholder="Write a reply" />
-                        <div className="mt-2">
-                          <button onClick={()=>handleReply(question.id)} disabled={submitting} className="btn-secondary disabled:opacity-50">{submitting?'Submitting...':'Reply'}</button>
+                    {(() => {
+                      // Don't show reply box for teachers viewing their own replies
+                      if (profile?.role === 'teacher' && viewTab === 'replies') {
+                        return null;
+                      }
+                      
+                      // Students can only reply to their own questions in My Questions view
+                      const canReply = 
+                        profile.role === 'student' && viewTab === 'mine' && profile.npub && (question.tags||[]).some(t=>t[0]==='p' && t[1]===profile.npub);
+                      
+                      return canReply && (
+                        <div className="mt-4">
+                          <textarea value={replyDrafts[question.id]||''} onChange={e=>setReplyDrafts({...replyDrafts, [question.id]: e.target.value})} className="input-field min-h-[80px]" placeholder="Write a reply" />
+                          <div className="mt-2">
+                            <button onClick={()=>handleReply(question.id)} disabled={submitting} className="btn-secondary disabled:opacity-50">{submitting?'Submitting...':'Reply'}</button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

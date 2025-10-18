@@ -97,3 +97,42 @@ exports.deleteEvent = async (req, res, next) => {
     res.status(201).json({ ok:true, data: r });
   } catch (err) { next(err); }
 };
+
+exports.clearAllData = async (req, res, next) => {
+  try {
+    const { nsec } = req.body;
+    if (!nsec) return res.status(400).json({ ok:false, error:'Missing private key' });
+    
+    // Fetch all questions and replies
+    const questionFilters = [{ kinds:[1], limit:1000, '#t':['blueorb'] }];
+    const allEvents = await nostr.fetchEvents(questionFilters, 5000);
+    
+    if (!allEvents || allEvents.length === 0) {
+      return res.json({ ok:true, data: { message: 'No data found to clear', deletedCount: 0 } });
+    }
+    
+    // Create deletion events for all found events
+    const deletionPromises = allEvents.map(event => {
+      const tags = [['e', event.id]];
+      return nostr.publishEvent({ kind:5, content:'', tags, privkey: nsec });
+    });
+    
+    // Execute all deletions
+    const results = await Promise.allSettled(deletionPromises);
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    
+    res.json({ 
+      ok:true, 
+      data: { 
+        message: `Cleared ${successful} events successfully${failed > 0 ? `, ${failed} failed` : ''}`, 
+        deletedCount: successful,
+        failedCount: failed,
+        totalFound: allEvents.length
+      } 
+    });
+  } catch (err) { 
+    console.error('Clear all data error:', err);
+    next(err); 
+  }
+};

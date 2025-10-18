@@ -60,22 +60,6 @@ const Navbar = () => {
               {t('nav.community')}
             </Link>
             <Link
-              to="/community/my-questions"
-              className={`font-medium transition-colors ${
-                isActive('/community/my-questions') ? 'text-primary' : 'text-gray-600 hover:text-primary'
-              }`}
-            >
-              My Questions
-            </Link>
-            <Link
-              to="/community/my-replies"
-              className={`font-medium transition-colors ${
-                isActive('/community/my-replies') ? 'text-primary' : 'text-gray-600 hover:text-primary'
-              }`}
-            >
-              My Replies
-            </Link>
-            <Link
               to="/admin"
               className={`font-medium transition-colors ${
                 isActive('/admin') ? 'text-primary' : 'text-gray-600 hover:text-primary'
@@ -101,8 +85,6 @@ const Navbar = () => {
           <Link to="/exams" className={`text-sm ${isActive('/exams')?'text-primary':'text-gray-700'}`}>{t('nav.exams')}</Link>
           <Link to="/materials" className={`text-sm ${isActive('/materials')?'text-primary':'text-gray-700'}`}>{t('nav.materials')}</Link>
           <Link to="/community" className={`text-sm ${isActive('/community')?'text-primary':'text-gray-700'}`}>{t('nav.community')}</Link>
-          <Link to="/community/my-questions" className={`text-sm ${isActive('/community/my-questions')?'text-primary':'text-gray-700'}`}>My Questions</Link>
-          <Link to="/community/my-replies" className={`text-sm ${isActive('/community/my-replies')?'text-primary':'text-gray-700'}`}>My Replies</Link>
           <Link to="/admin" className={`text-sm ${isActive('/admin')?'text-primary':'text-gray-700'}`}>{t('nav.admin')}</Link>
         </div>
       </div>
